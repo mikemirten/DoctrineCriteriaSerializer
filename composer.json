@@ -1,0 +1,7 @@
+{
+    "name": "mikemirten/doctrine-criteria-serializer",
+    "type": "library",
+    "require": {
+        "doctrine/collections": "^1.5"
+    }
+}
