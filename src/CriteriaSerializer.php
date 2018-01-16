@@ -1,14 +1,14 @@
 <?php
 declare(strict_types = 1);
 
-namespace Mikemirten\Component\Doctrine\Common\Collections\CriteriaSerializer;
+namespace Mikemirten\Component\DoctrineCriteriaSerializer;
 
 use Doctrine\Common\Collections\Criteria;
 
 /**
  * Interface of criteria serializer
  *
- * @package Mikemirten\Component\Doctrine\Common\Collections\CriteriaSerializer
+ * @package Mikemirten\Component\DoctrineCriteriaSerializer
  */
 interface CriteriaSerializer
 {

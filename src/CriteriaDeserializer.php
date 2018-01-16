@@ -1,14 +1,15 @@
 <?php
 declare(strict_types = 1);
 
-namespace Mikemirten\Component\Doctrine\Common\Collections\CriteriaSerializer;
+namespace Mikemirten\Component\DoctrineCriteriaSerializer;
 
 use Doctrine\Common\Collections\Criteria;
+use Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException;
 
 /**
  * Interface of criteria serializer
  *
- * @package Mikemirten\Component\Doctrine\Common\Collections\CriteriaSerializer
+ * @package Mikemirten\Component\DoctrineCriteriaSerializer
  */
 interface CriteriaDeserializer
 {
@@ -17,6 +18,8 @@ interface CriteriaDeserializer
      *
      * @param  string $source
      * @return Criteria
+     *
+     * @throws InvalidQueryException
      */
     public function deserialize(string $source): Criteria;
 
@@ -25,6 +28,8 @@ interface CriteriaDeserializer
      *
      * @param string   $source
      * @param Criteria $criteria
+     *
+     * @throws InvalidQueryException
      */
     public function append(string $source, Criteria $criteria): void;
 }
