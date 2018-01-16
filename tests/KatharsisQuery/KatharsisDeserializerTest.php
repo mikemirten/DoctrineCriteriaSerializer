@@ -11,7 +11,7 @@ class KatharsisDeserializerTest extends TestCase
 {
     public function testPaginationOffset()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria = $deserializer->deserialize('page[offset]=100');
         $this->assertSame(100, $criteria->getFirstResult());
@@ -19,7 +19,7 @@ class KatharsisDeserializerTest extends TestCase
 
     public function testPaginationLimit()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria = $deserializer->deserialize('page[limit]=10');
         $this->assertSame(10, $criteria->getMaxResults());
@@ -30,7 +30,7 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidPaginationDefinition()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
         $deserializer->deserialize('page=10');
     }
 
@@ -39,13 +39,13 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidPaginationMember()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
         $deserializer->deserialize('page[max]=10');
     }
 
     public function testSortingSingle()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria = $deserializer->deserialize('sort=firstName');
         $this->assertSame(['firstName' => Criteria::ASC], $criteria->getOrderings());
@@ -53,7 +53,7 @@ class KatharsisDeserializerTest extends TestCase
 
     public function testSortingSingleDescending()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria = $deserializer->deserialize('sort=-firstName');
         $this->assertSame(['firstName' => Criteria::DESC], $criteria->getOrderings());
@@ -61,7 +61,7 @@ class KatharsisDeserializerTest extends TestCase
 
     public function testSortingMultiple()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria  = $deserializer->deserialize('sort=firstName,-age');
         $orderings = $criteria->getOrderings();
@@ -76,13 +76,13 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidSortingDefinition()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
         $deserializer->deserialize('sort[age]=1');
     }
 
     public function testSimpleFiltering()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria   = $deserializer->deserialize('filter[firstName]=John');
         $expression = $criteria->getWhereExpression();
@@ -95,7 +95,7 @@ class KatharsisDeserializerTest extends TestCase
 
     public function testMultipleFiltering()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria   = $deserializer->deserialize('filter[firstName]=John&filter[lastName]=Doe');
         $expression = $criteria->getWhereExpression();
@@ -120,7 +120,7 @@ class KatharsisDeserializerTest extends TestCase
 
     public function testOperatorFiltering()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
 
         $criteria   = $deserializer->deserialize('filter[firstName][EQ]=John');
         $expression = $criteria->getWhereExpression();
@@ -136,7 +136,7 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidFilteringDefinition()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
         $deserializer->deserialize('filter=John');
     }
 
@@ -145,7 +145,7 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testFilteringUnsupportedOperator()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
         $deserializer->deserialize('filter[firstName][ABC]=John');
     }
 
@@ -154,7 +154,7 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testFilteringValueProcessingCallback()
     {
-        $deserializer = new KatharsisDeserializer();
+        $deserializer = new KatharsisQueryDeserializer();
         $deserializer->setFilterCallback('status', function(string $status) {
             $this->assertSame('open', $status);
             return 1;

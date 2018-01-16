@@ -16,7 +16,7 @@ use Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryExcept
  *
  * @package Mikemirten\Component\DoctrineCriteriaSerializer\KatharsisRequest
  */
-class KatharsisDeserializer implements CriteriaDeserializer
+class KatharsisQueryDeserializer implements CriteriaDeserializer
 {
     /**
      * Value processing callbacks for filtering by property
