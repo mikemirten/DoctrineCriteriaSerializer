@@ -19,6 +19,24 @@ use Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryExcept
 class KatharsisDeserializer implements CriteriaDeserializer
 {
     /**
+     * Value processing callbacks for filtering by property
+     *
+     * @var callable[]
+     */
+    protected $filterCallbacks;
+
+    /**
+     * Set value processing callback for a property
+     *
+     * @param string   $name
+     * @param callable $callback
+     */
+    public function setFilterCallback(string $name,  callable $callback): void
+    {
+        $this->filterCallbacks[$name] = $callback;
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function deserialize(string $source): Criteria
@@ -83,6 +101,11 @@ class KatharsisDeserializer implements CriteriaDeserializer
             }
 
             $value = trim($definition);
+
+            if (isset($this->filterCallbacks[$name])) {
+                $value = ($this->filterCallbacks[$name])($value);
+            }
+
             $criteria->andWhere(Criteria::expr()->eq($name, $value));
         }
     }
@@ -122,15 +145,19 @@ class KatharsisDeserializer implements CriteriaDeserializer
         $operator = strtolower($operator);
         $builder  = Criteria::expr();
 
-        if (method_exists($builder, $operator)) {
-            return $builder->$operator($name, $value);
+        if (! method_exists($builder, $operator)) {
+            throw new InvalidQueryException(sprintf(
+                'Unsupported operator "%s" given for "%s" property.',
+                $operator,
+                $name
+            ));
         }
 
-        throw new InvalidQueryException(sprintf(
-            'Unsupported operator "%s" given for "%s" property.',
-            $operator,
-            $name
-        ));
+        if (isset($this->filterCallbacks[$name])) {
+            $value = ($this->filterCallbacks[$name])($value);
+        }
+
+        return $builder->$operator($name, $value);
     }
 
     /**

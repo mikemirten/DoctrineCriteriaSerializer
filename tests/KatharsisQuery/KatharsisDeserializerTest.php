@@ -148,4 +148,21 @@ class KatharsisDeserializerTest extends TestCase
         $deserializer = new KatharsisDeserializer();
         $deserializer->deserialize('filter[firstName][ABC]=John');
     }
+
+    /**
+     * @depends testSimpleFiltering
+     */
+    public function testFilteringValueProcessingCallback()
+    {
+        $deserializer = new KatharsisDeserializer();
+        $deserializer->setFilterCallback('status', function(string $status) {
+            $this->assertSame('open', $status);
+            return 1;
+        });
+
+        $criteria   = $deserializer->deserialize('filter[status]=open');
+        $expression = $criteria->getWhereExpression();
+
+        $this->assertSame(1, $expression->getValue()->getValue());
+    }
 }
