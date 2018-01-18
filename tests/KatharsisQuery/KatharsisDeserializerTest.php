@@ -143,6 +143,15 @@ class KatharsisDeserializerTest extends TestCase
     /**
      * @expectedException \Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException
      */
+    public function testFilteringAbsentOperator()
+    {
+        $deserializer = new KatharsisQueryDeserializer();
+        $deserializer->deserialize('filter[firstName][]=John');
+    }
+
+    /**
+     * @expectedException \Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException
+     */
     public function testFilteringUnsupportedOperator()
     {
         $deserializer = new KatharsisQueryDeserializer();
@@ -164,5 +173,54 @@ class KatharsisDeserializerTest extends TestCase
         $expression = $criteria->getWhereExpression();
 
         $this->assertSame(1, $expression->getValue()->getValue());
+    }
+
+    /**
+     * @depends testSimpleFiltering
+     */
+    public function testFilteringArrayValueProcessingCallback()
+    {
+        $map = ['open' => 100, 'assigned' => 200];
+
+        $deserializer = new KatharsisQueryDeserializer();
+
+        $deserializer->setFilterCallback('status', function(string $status) use($map) {
+            $this->assertThat(
+                $status,
+                $this->logicalOr(
+                    $this->identicalTo('open'),
+                    $this->identicalTo('assigned')
+                )
+            );
+
+            return $map[$status];
+        });
+
+        $criteria   = $deserializer->deserialize('filter[status][in][]=open&filter[status][in][]=assigned');
+        $expression = $criteria->getWhereExpression();
+
+        $this->assertSame([100, 200], $expression->getValue()->getValue());
+    }
+
+    /**
+     * @expectedException \Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException
+     */
+    public function testInvalidFilteringInOperator()
+    {
+        $deserializer = new KatharsisQueryDeserializer();
+
+        $criteria = $deserializer->deserialize('filter[status][in]=open');
+        $criteria->getWhereExpression();
+    }
+
+    /**
+     * @expectedException \Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException
+     */
+    public function testInvalidFilteringNotInOperator()
+    {
+        $deserializer = new KatharsisQueryDeserializer();
+
+        $criteria = $deserializer->deserialize('filter[status][notIn]=open');
+        $criteria->getWhereExpression();
     }
 }

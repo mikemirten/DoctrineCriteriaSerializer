@@ -121,12 +121,13 @@ class KatharsisQueryDeserializer implements CriteriaDeserializer
     {
         foreach ($values as $operator => $value)
         {
-            $expression = $this->createExpression(
-                $name,
-                trim($operator),
-                trim($value)
-            );
+            if (is_integer($operator)) {
+                throw new InvalidQueryException('Operator must be defined by a string.');
+            }
 
+            $value = is_array($value) ? array_map('trim', $value) : trim($value);
+
+            $expression = $this->createExpression($name, trim($operator), $value);
             $criteria->andWhere($expression);
         }
     }
@@ -154,7 +155,13 @@ class KatharsisQueryDeserializer implements CriteriaDeserializer
         }
 
         if (isset($this->filterCallbacks[$name])) {
-            $value = ($this->filterCallbacks[$name])($value);
+            $value = is_array($value)
+                ? array_map($this->filterCallbacks[$name], $value)
+                : ($this->filterCallbacks[$name])($value);
+        }
+
+        if (($operator === 'in' || $operator === 'notin') && ! is_array($value)) {
+            throw new InvalidQueryException('Filtering operators "in" and "notIn" requires an array of values.');
         }
 
         return $builder->$operator($name, $value);
