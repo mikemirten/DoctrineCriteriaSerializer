@@ -15,8 +15,9 @@ interface CriteriaSerializer
     /**
      * Serialize criteria
      *
-     * @param  Criteria $criteria
+     * @param  Criteria             $criteria
+     * @param  SerializationContext $context
      * @return string
      */
-    public function serialize(Criteria $criteria): string;
+    public function serialize(Criteria $criteria, SerializationContext $context = null): string;
 }

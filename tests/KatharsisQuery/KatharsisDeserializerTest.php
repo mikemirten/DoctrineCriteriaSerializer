@@ -5,24 +5,33 @@ namespace Mikemirten\Component\DoctrineCriteriaSerializer\KatharsisQuery;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Comparison;
 use Doctrine\Common\Collections\Expr\CompositeExpression;
+use Mikemirten\Component\DoctrineCriteriaSerializer\DeserializationContext;
 use PHPUnit\Framework\TestCase;
 
 class KatharsisDeserializerTest extends TestCase
 {
     public function testPaginationOffset()
     {
-        $deserializer = new KatharsisQueryDeserializer();
+        $criteria = $this->createMock(Criteria::class);
 
-        $criteria = $deserializer->deserialize('page[offset]=100');
-        $this->assertSame(100, $criteria->getFirstResult());
+        $criteria->expects($this->once())
+            ->method('setFirstResult')
+            ->with(100);
+
+        $deserializer = new KatharsisQueryDeserializer();
+        $deserializer->deserialize('page[offset]=100', $criteria);
     }
 
     public function testPaginationLimit()
     {
-        $deserializer = new KatharsisQueryDeserializer();
+        $criteria = $this->createMock(Criteria::class);
 
-        $criteria = $deserializer->deserialize('page[limit]=10');
-        $this->assertSame(10, $criteria->getMaxResults());
+        $criteria->expects($this->once())
+            ->method('setMaxResults')
+            ->with(10);
+
+        $deserializer = new KatharsisQueryDeserializer();
+        $deserializer->deserialize('page[limit]=10', $criteria);
     }
 
     /**
@@ -30,8 +39,10 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidPaginationDefinition()
     {
+        $criteria = $this->createMock(Criteria::class);
+
         $deserializer = new KatharsisQueryDeserializer();
-        $deserializer->deserialize('page=10');
+        $deserializer->deserialize('page=10', $criteria);
     }
 
     /**
@@ -39,36 +50,49 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidPaginationMember()
     {
+        $criteria = $this->createMock(Criteria::class);
+
         $deserializer = new KatharsisQueryDeserializer();
-        $deserializer->deserialize('page[max]=10');
+        $deserializer->deserialize('page[max]=10', $criteria);
     }
 
     public function testSortingSingle()
     {
-        $deserializer = new KatharsisQueryDeserializer();
+        $criteria = $this->createMock(Criteria::class);
 
-        $criteria = $deserializer->deserialize('sort=firstName');
-        $this->assertSame(['firstName' => Criteria::ASC], $criteria->getOrderings());
+        $criteria->expects($this->once())
+            ->method('orderBy')
+            ->with(['firstName' => Criteria::ASC]);
+
+        $deserializer = new KatharsisQueryDeserializer();
+        $deserializer->deserialize('sort=firstName', $criteria);
     }
 
     public function testSortingSingleDescending()
     {
-        $deserializer = new KatharsisQueryDeserializer();
+        $criteria = $this->createMock(Criteria::class);
 
-        $criteria = $deserializer->deserialize('sort=-firstName');
-        $this->assertSame(['firstName' => Criteria::DESC], $criteria->getOrderings());
+        $criteria->expects($this->once())
+            ->method('orderBy')
+            ->with(['firstName' => Criteria::DESC]);
+
+        $deserializer = new KatharsisQueryDeserializer();
+        $deserializer->deserialize('sort=-firstName', $criteria);
     }
 
     public function testSortingMultiple()
     {
+        $criteria = $this->createMock(Criteria::class);
+
+        $criteria->expects($this->once())
+            ->method('orderBy')
+            ->with([
+                'firstName' => Criteria::ASC,
+                'age'       => Criteria::DESC
+            ]);
+
         $deserializer = new KatharsisQueryDeserializer();
-
-        $criteria  = $deserializer->deserialize('sort=firstName,-age');
-        $orderings = $criteria->getOrderings();
-
-        $this->assertSame(['firstName', 'age'], array_keys($orderings));
-        $this->assertSame(Criteria::ASC, $orderings['firstName']);
-        $this->assertSame(Criteria::DESC, $orderings['age']);
+        $deserializer->deserialize('sort=firstName,-age', $criteria);
     }
 
     /**
@@ -76,59 +100,79 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidSortingDefinition()
     {
+        $criteria = $this->createMock(Criteria::class);
+
         $deserializer = new KatharsisQueryDeserializer();
-        $deserializer->deserialize('sort[age]=1');
+        $deserializer->deserialize('sort[age]=1', $criteria);
     }
 
     public function testSimpleFiltering()
     {
+        $criteria = $this->createMock(Criteria::class);
+        $context  = $this->createMock(DeserializationContext::class);
+
+        $context->method('processFilterValue')
+            ->with('firstName', 'john')
+            ->willReturn('John');
+
+        $criteria->expects($this->once())
+            ->method('andWhere')
+            ->with($this->isInstanceOf(Comparison::class))
+            ->willReturnCallback(function(Comparison $expression)
+            {
+                $this->assertSame('firstName', $expression->getField());
+                $this->assertSame(Comparison::EQ, $expression->getOperator());
+                $this->assertSame('John', $expression->getValue()->getValue());
+            });
+
         $deserializer = new KatharsisQueryDeserializer();
-
-        $criteria   = $deserializer->deserialize('filter[firstName]=John');
-        $expression = $criteria->getWhereExpression();
-
-        $this->assertInstanceOf(Comparison::class, $expression);
-        $this->assertSame('firstName', $expression->getField());
-        $this->assertSame(Comparison::EQ, $expression->getOperator());
-        $this->assertSame('John', $expression->getValue()->getValue());
+        $deserializer->deserialize('filter[firstName]=john', $criteria, $context);
     }
 
     public function testMultipleFiltering()
     {
+        $criteria = $this->createMock(Criteria::class);
+
+        $criteria->expects($this->at(0))
+            ->method('andWhere')
+            ->with($this->isInstanceOf(Comparison::class))
+            ->willReturnCallback(function(Comparison $expression)
+            {
+                $this->assertSame('firstName', $expression->getField());
+                $this->assertSame(Comparison::EQ, $expression->getOperator());
+                $this->assertSame('John', $expression->getValue()->getValue());
+            });
+
+        $criteria->expects($this->at(1))
+            ->method('andWhere')
+            ->with($this->isInstanceOf(Comparison::class))
+            ->willReturnCallback(function(Comparison $expression)
+            {
+                $this->assertSame('lastName', $expression->getField());
+                $this->assertSame(Comparison::EQ, $expression->getOperator());
+                $this->assertSame('Doe', $expression->getValue()->getValue());
+            });
+
         $deserializer = new KatharsisQueryDeserializer();
-
-        $criteria   = $deserializer->deserialize('filter[firstName]=John&filter[lastName]=Doe');
-        $expression = $criteria->getWhereExpression();
-
-        $this->assertInstanceOf(CompositeExpression::class, $expression);
-        $this->assertSame(CompositeExpression::TYPE_AND, $expression->getType());
-        $this->assertCount(2, $expression->getExpressionList());
-
-        $comparison1 = $expression->getExpressionList()[0];
-        $comparison2 = $expression->getExpressionList()[1];
-
-        $this->assertInstanceOf(Comparison::class, $comparison1);
-        $this->assertSame('firstName', $comparison1->getField());
-        $this->assertSame(Comparison::EQ, $comparison1->getOperator());
-        $this->assertSame('John', $comparison1->getValue()->getValue());
-
-        $this->assertInstanceOf(Comparison::class, $comparison2);
-        $this->assertSame('lastName', $comparison2->getField());
-        $this->assertSame(Comparison::EQ, $comparison2->getOperator());
-        $this->assertSame('Doe', $comparison2->getValue()->getValue());
+        $deserializer->deserialize('filter[firstName]=John&filter[lastName]=Doe', $criteria);
     }
 
     public function testOperatorFiltering()
     {
+        $criteria = $this->createMock(Criteria::class);
+
+        $criteria->expects($this->once())
+            ->method('andWhere')
+            ->with($this->isInstanceOf(Comparison::class))
+            ->willReturnCallback(function(Comparison $expression)
+            {
+                $this->assertSame('firstName', $expression->getField());
+                $this->assertSame(Comparison::EQ, $expression->getOperator());
+                $this->assertSame('John', $expression->getValue()->getValue());
+            });
+
         $deserializer = new KatharsisQueryDeserializer();
-
-        $criteria   = $deserializer->deserialize('filter[firstName][EQ]=John');
-        $expression = $criteria->getWhereExpression();
-
-        $this->assertInstanceOf(Comparison::class, $expression);
-        $this->assertSame('firstName', $expression->getField());
-        $this->assertSame(Comparison::EQ, $expression->getOperator());
-        $this->assertSame('John', $expression->getValue()->getValue());
+        $deserializer->deserialize('filter[firstName][EQ]=John', $criteria);
     }
 
     /**
@@ -136,8 +180,10 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidFilteringDefinition()
     {
+        $criteria = $this->createMock(Criteria::class);
+
         $deserializer = new KatharsisQueryDeserializer();
-        $deserializer->deserialize('filter=John');
+        $deserializer->deserialize('filter=John', $criteria);
     }
 
     /**
@@ -145,8 +191,10 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testFilteringAbsentOperator()
     {
+        $criteria = $this->createMock(Criteria::class);
+
         $deserializer = new KatharsisQueryDeserializer();
-        $deserializer->deserialize('filter[firstName][]=John');
+        $deserializer->deserialize('filter[firstName][]=John', $criteria);
     }
 
     /**
@@ -154,52 +202,10 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testFilteringUnsupportedOperator()
     {
-        $deserializer = new KatharsisQueryDeserializer();
-        $deserializer->deserialize('filter[firstName][ABC]=John');
-    }
-
-    /**
-     * @depends testSimpleFiltering
-     */
-    public function testFilteringValueProcessingCallback()
-    {
-        $deserializer = new KatharsisQueryDeserializer();
-        $deserializer->setFilterCallback('status', function(string $status) {
-            $this->assertSame('open', $status);
-            return 1;
-        });
-
-        $criteria   = $deserializer->deserialize('filter[status]=open');
-        $expression = $criteria->getWhereExpression();
-
-        $this->assertSame(1, $expression->getValue()->getValue());
-    }
-
-    /**
-     * @depends testSimpleFiltering
-     */
-    public function testFilteringArrayValueProcessingCallback()
-    {
-        $map = ['open' => 100, 'assigned' => 200];
+        $criteria = $this->createMock(Criteria::class);
 
         $deserializer = new KatharsisQueryDeserializer();
-
-        $deserializer->setFilterCallback('status', function(string $status) use($map) {
-            $this->assertThat(
-                $status,
-                $this->logicalOr(
-                    $this->identicalTo('open'),
-                    $this->identicalTo('assigned')
-                )
-            );
-
-            return $map[$status];
-        });
-
-        $criteria   = $deserializer->deserialize('filter[status][in][]=open&filter[status][in][]=assigned');
-        $expression = $criteria->getWhereExpression();
-
-        $this->assertSame([100, 200], $expression->getValue()->getValue());
+        $deserializer->deserialize('filter[firstName][ABC]=John', $criteria);
     }
 
     /**
@@ -207,10 +213,10 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidFilteringInOperator()
     {
-        $deserializer = new KatharsisQueryDeserializer();
+        $criteria = $this->createMock(Criteria::class);
 
-        $criteria = $deserializer->deserialize('filter[status][in]=open');
-        $criteria->getWhereExpression();
+        $deserializer = new KatharsisQueryDeserializer();
+        $deserializer->deserialize('filter[status][in]=open', $criteria);
     }
 
     /**
@@ -218,9 +224,9 @@ class KatharsisDeserializerTest extends TestCase
      */
     public function testInvalidFilteringNotInOperator()
     {
-        $deserializer = new KatharsisQueryDeserializer();
+        $criteria = $this->createMock(Criteria::class);
 
-        $criteria = $deserializer->deserialize('filter[status][notIn]=open');
-        $criteria->getWhereExpression();
+        $deserializer = new KatharsisQueryDeserializer();
+        $deserializer->deserialize('filter[status][notIn]=open', $criteria);
     }
 }

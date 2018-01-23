@@ -5,7 +5,9 @@ namespace Mikemirten\Component\DoctrineCriteriaSerializer\KatharsisQuery;
 
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Expression;
+use Mikemirten\Component\DoctrineCriteriaSerializer\Context\DummyDeserializationContext;
 use Mikemirten\Component\DoctrineCriteriaSerializer\CriteriaDeserializer;
+use Mikemirten\Component\DoctrineCriteriaSerializer\DeserializationContext as Context;
 use Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException;
 
 /**
@@ -19,54 +21,29 @@ use Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryExcept
 class KatharsisQueryDeserializer implements CriteriaDeserializer
 {
     /**
-     * Value processing callbacks for filtering by property
-     *
-     * @var callable[]
-     */
-    protected $filterCallbacks;
-
-    /**
-     * Set value processing callback for a property
-     *
-     * @param string   $name
-     * @param callable $callback
-     */
-    public function setFilterCallback(string $name,  callable $callback): void
-    {
-        $this->filterCallbacks[$name] = $callback;
-    }
-
-    /**
      * {@inheritdoc}
      */
-    public function deserialize(string $source): Criteria
-    {
-        $criteria = Criteria::create();
-        $this->append($source, $criteria);
-
-        return $criteria;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function append(string $source, Criteria $criteria): void
+    public function deserialize(string $source, Criteria $criteria, Context $context = null): void
     {
         $data = $this->parseQuery($source);
 
+        if ($context === null) {
+            $context = new DummyDeserializationContext();
+        }
+
         if (isset($data['filter'])) {
             $this->validateFiltering($data['filter']);
-            $this->processFiltering($data['filter'], $criteria);
+            $this->processFiltering($data['filter'], $criteria, $context);
         }
 
         if (isset($data['sort'])) {
             $this->validateSorting($data['sort']);
-            $this->processSorting($data['sort'], $criteria);
+            $this->processSorting($data['sort'], $criteria, $context);
         }
 
         if (isset($data['page'])) {
             $this->validatePagination($data['page']);
-            $this->processPagination($data['page'], $criteria);
+            $this->processPagination($data['page'], $criteria, $context);
         }
     }
 
@@ -88,23 +65,21 @@ class KatharsisQueryDeserializer implements CriteriaDeserializer
      *
      * @param array    $filters
      * @param Criteria $criteria
+     * @param Context  $context
      */
-    protected function processFiltering(array $filters, Criteria $criteria): void
+    protected function processFiltering(array $filters, Criteria $criteria, Context $context): void
     {
         foreach ($filters as $name => $definition)
         {
             $name = trim($name);
 
             if (is_array($definition)) {
-                $this->processFilter($name, $definition, $criteria);
+                $this->processFilter($name, $definition, $criteria, $context);
                 continue;
             }
 
             $value = trim($definition);
-
-            if (isset($this->filterCallbacks[$name])) {
-                $value = ($this->filterCallbacks[$name])($value);
-            }
+            $value = $context->processFilterValue($name, $value);
 
             $criteria->andWhere(Criteria::expr()->eq($name, $value));
         }
@@ -116,8 +91,9 @@ class KatharsisQueryDeserializer implements CriteriaDeserializer
      * @param string   $name
      * @param array    $values
      * @param Criteria $criteria
+     * @param Context  $context
      */
-    protected function processFilter(string $name, array $values, Criteria $criteria): void
+    protected function processFilter(string $name, array $values, Criteria $criteria, Context $context): void
     {
         foreach ($values as $operator => $value)
         {
@@ -127,7 +103,7 @@ class KatharsisQueryDeserializer implements CriteriaDeserializer
 
             $value = is_array($value) ? array_map('trim', $value) : trim($value);
 
-            $expression = $this->createExpression($name, trim($operator), $value);
+            $expression = $this->createExpression($name, trim($operator), $value, $context);
             $criteria->andWhere($expression);
         }
     }
@@ -135,13 +111,14 @@ class KatharsisQueryDeserializer implements CriteriaDeserializer
     /**
      * Create expression
      *
-     * @param  string $name
-     * @param  string $operator
-     * @param  mixed $value
+     * @param  string  $name
+     * @param  string  $operator
+     * @param  mixed   $value
+     * @param  Context $context
      * @return Expression
      * @throws InvalidQueryException
      */
-    protected function createExpression(string $name, string $operator, $value): Expression
+    protected function createExpression(string $name, string $operator, $value, Context $context): Expression
     {
         $operator = strtolower($operator);
         $builder  = Criteria::expr();
@@ -154,11 +131,7 @@ class KatharsisQueryDeserializer implements CriteriaDeserializer
             ));
         }
 
-        if (isset($this->filterCallbacks[$name])) {
-            $value = is_array($value)
-                ? array_map($this->filterCallbacks[$name], $value)
-                : ($this->filterCallbacks[$name])($value);
-        }
+        $value = $context->processFilterValue($name, $value);
 
         if (($operator === 'in' || $operator === 'notin') && ! is_array($value)) {
             throw new InvalidQueryException('Filtering operators "in" and "notIn" requires an array of values.');

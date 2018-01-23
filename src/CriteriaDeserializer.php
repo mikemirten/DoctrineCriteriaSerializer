@@ -16,20 +16,11 @@ interface CriteriaDeserializer
     /**
      * Deserialize criteria
      *
-     * @param  string $source
-     * @return Criteria
+     * @param string                 $source
+     * @param Criteria               $criteria
+     * @param DeserializationContext $context
      *
      * @throws InvalidQueryException
      */
-    public function deserialize(string $source): Criteria;
-
-    /**
-     * Deserialize criteria and append to an existing one
-     *
-     * @param string   $source
-     * @param Criteria $criteria
-     *
-     * @throws InvalidQueryException
-     */
-    public function append(string $source, Criteria $criteria): void;
+    public function deserialize(string $source, Criteria $criteria, DeserializationContext $context = null): void;
 }
