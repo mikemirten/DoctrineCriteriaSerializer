@@ -4,7 +4,6 @@ namespace Mikemirten\Component\DoctrineCriteriaSerializer\KatharsisQuery;
 
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Comparison;
-use Doctrine\Common\Collections\Expr\CompositeExpression;
 use Mikemirten\Component\DoctrineCriteriaSerializer\DeserializationContext;
 use PHPUnit\Framework\TestCase;
 

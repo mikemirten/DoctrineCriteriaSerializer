@@ -49,7 +49,8 @@ class KatharsisQuerySerializer implements CriteriaSerializer
             return '';
         }
 
-        return http_build_query($definition);
+        // TODO: Find a way to build not encoded query instead of using urldecode()
+        return urldecode(http_build_query($definition));
     }
 
     /**
@@ -126,7 +127,11 @@ class KatharsisQuerySerializer implements CriteriaSerializer
 
         foreach ($expression->getExpressionList() as $subexpression)
         {
-            $definition[] = $this->assembleExpression($subexpression, $level + 1);
+            $definition = array_merge_recursive(
+                $definition,
+                $this->assembleExpression($subexpression, $level + 1)
+
+            );
         }
 
         if ($operator === CompositeExpression::TYPE_OR) {
